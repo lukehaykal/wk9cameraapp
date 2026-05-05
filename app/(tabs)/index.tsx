@@ -5,7 +5,10 @@ import { StyleSheet, Text, View } from "react-native";
 export default function App() {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
-  const [scannedData, setScannedData] = useState(null);
+  const [scannedData, setScannedData] = useState<{
+    type: string;
+    data: string;
+  } | null>(null);
 
   if (!permission) return <View />;
   if (!permission.granted) {
@@ -17,7 +20,13 @@ export default function App() {
   }
 
   // 🔑 This is the handler that fires when a barcode is detected
-  const handleBarcodeScanned = ({ type, data }) => {
+  const handleBarcodeScanned = ({
+    type,
+    data,
+  }: {
+    type: string;
+    data: string;
+  }) => {
     if (scanned) return; // prevent duplicate scans
     setScanned(true);
     setScannedData({ type, data });

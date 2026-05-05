@@ -1,98 +1,114 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { CameraView, useCameraPermissions } from "expo-camera";
+import { useState } from "react";
+import { StyleSheet, Text, View } from "react-native";
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+export default function App() {
+  const [permission, requestPermission] = useCameraPermissions();
+  const [scanned, setScanned] = useState(false);
+  const [scannedData, setScannedData] = useState(null);
 
-export default function HomeScreen() {
+  if (!permission) return <View />;
+  if (!permission.granted) {
+    return (
+      <View style={styles.container}>
+        <Text>Camera permission required</Text>
+      </View>
+    );
+  }
+
+  // 🔑 This is the handler that fires when a barcode is detected
+  const handleBarcodeScanned = ({ type, data }) => {
+    if (scanned) return; // prevent duplicate scans
+    setScanned(true);
+    setScannedData({ type, data });
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <View style={styles.container}>
+      <CameraView
+        style={styles.camera}
+        facing="back"
+        // 🔑 Enable barcode scanning
+        barcodeScannerSettings={{
+          barcodeTypes: [
+            "qr",
+            "ean13",
+            "ean8",
+            "code128",
+            "code39",
+            "pdf417",
+            "aztec",
+          ],
+        }}
+        // 🔑 Attach the scan event handler
+        onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
+      />
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      {/* Overlay UI */}
+      {scannedData && (
+        <View style={styles.resultBox}>
+          <Text style={styles.resultType}>Type: {scannedData.type}</Text>
+          <Text style={styles.resultData}>{scannedData.data}</Text>
+          <Text
+            style={styles.scanAgain}
+            onPress={() => {
+              setScanned(false);
+              setScannedData(null);
+            }}
+          >
+            Tap to scan again
+          </Text>
+        </View>
+      )}
+
+      {/* Optional: targeting reticle */}
+      {!scannedData && (
+        <View style={styles.overlay}>
+          <View style={styles.reticle} />
+          <Text style={styles.hint}>Point at a QR code</Text>
+        </View>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: { flex: 1 },
+  camera: { flex: 1 },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  reticle: {
+    width: 220,
+    height: 220,
+    borderWidth: 2,
+    borderColor: "#00FF00",
+    borderRadius: 12,
+    backgroundColor: "transparent",
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  hint: {
+    marginTop: 16,
+    color: "#fff",
+    fontSize: 16,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
   },
+  resultBox: {
+    position: "absolute",
+    bottom: 40,
+    left: 20,
+    right: 20,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 20,
+    alignItems: "center",
+    elevation: 10,
+  },
+  resultType: { fontSize: 12, color: "#888", marginBottom: 4 },
+  resultData: { fontSize: 16, fontWeight: "bold", textAlign: "center" },
+  scanAgain: { marginTop: 12, color: "#007AFF", fontSize: 14 },
 });
